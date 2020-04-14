@@ -3,26 +3,76 @@ title: "Malawi Vervet Data"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r}
+install.packages("curl")
+library(curl)
+install.packages("dplyr")
+library(dplyr)
+install.packages("tidyverse")
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+# Just playing with my full dataset
+```{r}
+vervets_full<- curl("https://raw.githubusercontent.com/langley1/Vervet-Data/master/Vervet%20Behavior.csv")
+vervets_full<- read.csv(vervets_full, header = TRUE)
+head(vervets_full)
+tail(vervets_full)
+nrow(vervets_full)
+summary(vervets_full)
+names(vervets_full)
+unique(vervets_full$Location)
+unique(vervets_full$Age)
+sort(table(vervets_full$Behavior), decreasing = TRUE)
 ```
 
-## Including Plots
+# Creating a subset of the data only looking at location that falls under "human habitation"
+```{r}
+human_habitation<- vervets_full %>% filter(Location %in% c("HCS", "HS", "HO", "HP")) 
+nrow(human_habitation)
 
-You can also embed plots, for example:
+i <- sapply(human_habitation, is.factor) #I'm turning this into characters to see if that helps with the boxplot attempts
+human_habitation[i] <- lapply(human_habitation[i], as.character)
+human_habitation %>% mutate_if(is.factor, as.character) -> human_habitation
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+str(human_habitation)
+
+HH_behav<- human_habitation$Behavior
+str(HH_behav)
+boxplot(HH_behav, data= human_habitation) ##Non Numeric Error
+str(human_habitation)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+# Looking at some of the individual behaviors and counting their occurences in human habituation subset
+```{r}
+unique(HH_behav) #There are 11 total behaviors
+
+HH_F<- human_habitation %>% filter(Behavior %in% c("Fe", "Fo"))
+nrow(HH_F) #158 feeding or foraging bouts in HH
+
+HH_PL<- human_habitation %>% filter(Behavior == "PL")
+nrow(HH_PL) #28 playing bouts in HH
+
+HH_G<- human_habitation %>% filter(Behavior %in% c("G+", "G-", "Gr+", "Gr-"))
+nrow(HH_G) #31 grooming bouts
+```
+
+# Now just looking at forest/river location 
+```{r}
+Forest<- vervets_full %>% filter(Location %in% c("F", "RF", "RB", "RV"))
+Forest
+
+unique(Forest$Behavior) #24 total behaviors (more than HH)
+```
+
+# Looking at some individual behaviors for forest/river location
+```{r}
+Forest_F<- Forest %>% filter(Behavior %in% c("Fe", "Fo"))
+nrow(Forest_F) #399 feeding/foraging bouts 
+
+Forest_PL<- Forest %>% filter(Behavior == "PL")
+nrow(Forest_PL) #295 playing bouts in Forest
+
+Forest_G<- Forest %>% filter(Behavior %in% c("G+", "G-", "Gr+", "Gr-"))
+nrow(Forest_G) #156 
+```
+
