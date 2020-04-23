@@ -9,26 +9,51 @@ library(curl)
 install.packages("dplyr")
 library(dplyr)
 install.packages("tidyverse")
+library(tidyverse)
+install.packages("gplots")
+library(gplots)
+install.packages("corrplot")
+library(corrplot)
+install.packages("ggplot2")
+library(ggplot2)
 ```
 
 # Just playing with my full dataset
 ```{r}
-vervets_full<- curl("https://raw.githubusercontent.com/langley1/Vervet-Data/master/Vervet%20Behavior.csv")
+vervets_original<- curl("https://raw.githubusercontent.com/langley1/Vervet-Data/master/Vervet%20Behavior.csv")
+vervets_original<- read.csv(vervets_original, header = TRUE)
+head(vervets_original)
+tail(vervets_original)
+nrow(vervets_original)
+summary(vervets_original)
+names(vervets_original)
+unique(vervets_original$Location)
+unique(vervets_original$Age)
+sort(table(original$Behavior), decreasing = TRUE)
+```
+
+# Importing Updated DataSet 
+```{r}
+vervets_full<- curl("https://raw.githubusercontent.com/langley1/Vervet-Data/master/LWT%20Vervet%20Dataset_Updated.csv")
 vervets_full<- read.csv(vervets_full, header = TRUE)
 head(vervets_full)
-tail(vervets_full)
-nrow(vervets_full)
+str(vervets_full)
 summary(vervets_full)
-names(vervets_full)
-unique(vervets_full$Location)
-unique(vervets_full$Age)
-sort(table(vervets_full$Behavior), decreasing = TRUE)
+```
+
+# Using the with() function to count the total number of individual scans conducted
+```{r}
+with(vervets_full, interaction(Day, Month, Scan.time, AM.PM, drop=TRUE)) #Using the full dataset because some of my location groupings overlap with a single scan/ need to include day and month so I get every unique scan
+
+table_full<- aggregate(numeric(nrow(vervets_full)), vervets_full[c("Day", "Month", "Scan.time", "AM.PM")], length) #this just puts it in a nice table 
+nrow(table_full) #1168 total scans
 ```
 
 # Creating a subset of the data only looking at location that falls under "human habitation"
 ```{r}
-human_habitation<- vervets_full %>% filter(Location %in% c("HCS", "HS", "HO", "HP")) 
-nrow(human_habitation)
+human_habitation<- vervets_full %>% filter(Location %in% c("HCS", "HS", "HO", "RS", "CP", "PG", "GP")) 
+nrow(human_habitation) #3370
+unique(human_habitation$Scan.time) #142
 
 i <- sapply(human_habitation, is.factor) #I'm turning this into characters to see if that helps with the boxplot attempts
 human_habitation[i] <- lapply(human_habitation[i], as.character)
@@ -36,43 +61,286 @@ human_habitation %>% mutate_if(is.factor, as.character) -> human_habitation
 
 str(human_habitation)
 
+human_habitation$Behavior
 HH_behav<- human_habitation$Behavior
 str(HH_behav)
 boxplot(HH_behav, data= human_habitation) ##Non Numeric Error
 str(human_habitation)
 ```
 
+# Finding the proportion of Adult Female behavior occurences in **human habitation** category
+
+*Total*
+```{r}
+AF_HH<- human_habitation %>% filter(Age == "A", Sex == "F") #Starting with total number of Adult Fem behaviors in HH
+AF_HH #767
+```
+
+*Feeding/foraging*
+```{r}
+AF_Fe_HH<- human_habitation %>% filter(Age == "A", Sex == "F", Behavior %in% c("Fe", "Fo"))
+AF_Fo_HH #443 rows
+
+prop_AF_Fe_HH<- (nrow(AF_Fe_HH)/nrow(AF_HH))*100
+prop_AF_Fe_HH #57.76
+```
+
+*Grooming*
+```{r}
+AF_G_HH<- human_habitation %>% filter(Age == "A", Sex == "F", Behavior %in% c("G+", "G-"))
+AF_G_HH #40 rows
+
+prop_AF_G_HH<- (nrow(AF_G_HH)/nrow(AF_HH))*100
+prop_AF_G_HH #5.22
+```
+
+*Aggression*
+```{r}
+AF_Ag_HH<- human_habitation %>% filter(Age == "A", Sex == "F", Behavior %in% c("Ag+", "Ag-"))
+AF_Ag_HH #3
+
+prop_AF_Ag_HH<- (nrow(AF_Ag_HH)/nrow(AF_HH))*100
+prop_AF_Ag_HH #0.39
+```
+
+# Creating dataframe for Forest/river location 
+```{r}
+Forest<- vervets_full %>% filter(Location %in% c("F", "RF", "RB", "RV", "WG"))
+Forest
+
+unique(Forest$Behavior) #24 total behaviors (more than HH)
+unique(Forest$Scan.time) #142
+```
+
+# Using the with() function to count the total number of individual scans conducted among the Forest locations
+```{r}
+with(Forest, interaction(Day, Month, Scan.time, AM.PM, drop=TRUE))   # gives labels
+
+table<- aggregate(numeric(nrow(Forest)), Forest[c("Day", "Month", "Scan.time", "AM.PM")], length) 
+```
+
+
+# Finding the proportion of Adult Female behavior occurences in **Forest** category
+
+*Total*
+```{r}
+AF_F<- Forest %>% filter(Age == "A", Sex == "F") #includes all behaviors
+AF_F #631
+```
+
+*Feeding/foraging*
+```{r}
+AF_Fe_F<- Forest %>% filter(Age == "A", Sex == "F", Behavior %in% c("Fe", "Fo"))
+AF_Fe_F #97
+
+prop_AF_Fe_F<- (nrow(AF_Fo_F)/nrow(AF_F))*100
+prop_AF_Fe_F #15.37
+```
+
+*Grooming*
+```{r}
+AF_G_F<- Forest %>% filter(Age == "A", Sex == "F", Behavior %in% c("G+", "G-"))
+AF_G_F #71 rows
+
+prop_AF_G_F<- (nrow(AF_G_F)/nrow(AF_F))*100
+prop_AF_G_F #11.25
+```
+
+*Agression*
+```{r}
+AF_Ag_F<- Forest %>% filter(Age == "A", Sex == "F", Behavior %in% c("Ag+", "Ag-"))
+AF_Ag_F #5 rows
+
+prop_AF_Ag_F<- (nrow(AF_Ag_F)/nrow(AF_F))*100
+prop_AF_Ag_F #0.7923
+```
+
+# Creating dataframe for Outside/Inside Enclosures
+```{r}
+Out_enclosures<- vervets_full %>% filter(Location %in% c("Oep", "Oed", "Oeb"))
+nrow(Out_enclosures) #212
+unique(Out_enclosures$Scan.time) #142
+
+In_enclosures<- vervets_full %>% filter(Location %in% c("Ied")) #No data included for the other inside enclosure locations (Iep and Ieb)
+nrow(In_enclosures) #346
+unique(In_enclosures$Scan.time) #142
+```
+
+# Finding the proportion of Adult Female behavior occurences in **outside enclosure** category
+
+*Total*
+```{r}
+AF_OE<- Out_enclosures %>% filter(Age == "A", Sex == "F")
+AF_OE #57
+```
+
+*Feeding/foraging*
+```{r}
+AF_Fe_OE<- Out_enclosures %>% filter(Age == "A", Sex == "F", Behavior %in% c("Fe", "Fo"))
+AF_Fe_OE #2
+
+prop_AF_Fe_OE<- (nrow(AF_Fe_OE)/nrow(AF_OE))*100
+prop_AF_Fe_OE #3.51
+```
+
+*Grooming*
+```{r}
+AF_G_OE<- Out_enclosures %>% filter(Age == "A", Sex == "F", Behavior %in% c("G+", "G-"))
+AF_G_OE #12
+
+prop_AF_G_OE<- (nrow(AF_G_OE)/nrow(AF_OE))*100
+prop_AF_G_OE #21.05
+```
+
+*Agression*
+```{r}
+AF_Ag_OE<- Out_enclosures %>% filter(Age == "A", Sex == "F", Behavior %in% c("Ag+", "Ag-"))
+AF_Ag_OE #0
+
+prop_AF_Ag_OE<- (nrow(AF_Ag_OE)/nrow(AF_OE))*100
+prop_AF_Ag_OE #0
+```
+
+# Finding the proportion of Adult Female behavior occurences in **inside enclosure** category
+
+*Total*
+```{r}
+AF_IE<- In_enclosures %>% filter(Age == "A", Sex == "F")
+AF_IE #99
+```
+
+*Feeding/foraging*
+```{r}
+AF_Fe_IE<- In_enclosures %>% filter(Age == "A", Sex == "F", Behavior %in% c("Fe", "Fo"))
+AF_Fe_IE #51
+
+prop_AF_Fe_IE<- (nrow(AF_Fe_IE)/nrow(AF_IE))*100
+prop_AF_Fe_IE #51.52
+```
+
+*Grooming*
+```{r}
+AF_G_IE<- In_enclosures %>% filter(Age == "A", Sex == "F", Behavior %in% c("G+", "G-"))
+AF_G_IE #14
+
+prop_AF_G_IE<- (nrow(AF_G_IE)/nrow(AF_IE))*100
+prop_AF_G_IE #14.14
+```
+
+*Agression*
+```{r}
+AF_Ag_IE<- In_enclosures %>% filter(Age == "A", Sex == "F", Behavior %in% c("Ag+", "Ag-"))
+AF_Ag_IE #3
+
+prop_AF_Ag_IE<- (nrow(AF_Ag_IE)/nrow(AF_IE))*100
+prop_AF_Ag_IE #3.03
+```
+
+```{r}
+AF_behaviors_table<- matrix(c(prop_AF_Fe_F, prop_AF_Fe_HH, prop_AF_Fe_IE, prop_AF_Fe_OE, prop_AF_G_F, prop_AF_G_HH, prop_AF_G_IE, prop_AF_G_OE, prop_AF_Ag_F, prop_AF_Ag_HH, prop_AF_Ag_IE, prop_AF_Ag_OE), ncol= 4, byrow = TRUE)
+colnames(AF_behaviors_table)<- c("Forest", "HH", "In Encl", "Out Encl")
+rownames(AF_behaviors_table)<- c("Feeding", "Grooming", "Aggression")
+AF_behaviors_table<- as.table(AF_behaviors_table)
+AF_behaviors_table
+
+balloonplot(t(AF_behaviors_table), main ="Adult Female Behaviors", xlab ="", ylab="",
+            label = FALSE, show.margins = FALSE)
+```
+# Running a chi-square test
+```{r}
+AF_chisq <- chisq.test(AF_behaviors_table)
+AF_chisq
+
+AF_chisq$observed
+round(AF_chisq$expected,2)
+
+round(AF_chisq$residuals, 3) #This shows us our Pearson residuals (Cells with the highest absolute standardized residuals contribute the most to the total Chi-square score)
+corrplot(AF_chisq$residuals, is.cor = FALSE) #Allows us to visualize the residuals, blue is positive correlationa and red is negative
+
+contrib <- 100*AF_chisq$residuals^2/AF_chisq$statistic #The contribution (in %) of a given cell to the total Chi-square score
+round(contrib, 3)
+
+corrplot(contrib, is.cor = FALSE) #Visualizing the contribution %s
+```
+
+
+
+# Creating dataset for the remaining locations 
+```{r}
+Outside<- vervets_full %>% filter(Location %in% c("CG", "PW", "Ln", "RO"))
+nrow(Out_enclosures)
+```
+
+
 # Looking at some of the individual behaviors and counting their occurences in human habituation subset
 ```{r}
 unique(HH_behav) #There are 11 total behaviors
 
 HH_F<- human_habitation %>% filter(Behavior %in% c("Fe", "Fo"))
+HH_F$Loc_Cat<- "HH" #adding in a new column so that when I merge all of the Fe/Fo dfs, I can distinguish by location category
+head(HH_F)
 nrow(HH_F) #158 feeding or foraging bouts in HH
+perc_HH_F<- (nrow(HH_F)/530)*100
+perc_HH_F
 
 HH_PL<- human_habitation %>% filter(Behavior == "PL")
 nrow(HH_PL) #28 playing bouts in HH
+perc_HH_PL<- (nrow(HH_PL)/530)*100
+perc_HH_PL
 
 HH_G<- human_habitation %>% filter(Behavior %in% c("G+", "G-", "Gr+", "Gr-"))
 nrow(HH_G) #31 grooming bouts
+perc_HH_G<- (nrow(HH_G)/530)*100
+perc_HH_G
 ```
 
-# Now just looking at forest/river location 
 ```{r}
-Forest<- vervets_full %>% filter(Location %in% c("F", "RF", "RB", "RV"))
-Forest
-
-unique(Forest$Behavior) #24 total behaviors (more than HH)
+x<- data.frame("Behavior Category" = c("Foraging/Feeding", "Playing", "Grooming"), "Percent" = c(perc_HH_F, perc_HH_PL, perc_HH_G))
+x
 ```
 
 # Looking at some individual behaviors for forest/river location
 ```{r}
 Forest_F<- Forest %>% filter(Behavior %in% c("Fe", "Fo"))
 nrow(Forest_F) #399 feeding/foraging bouts 
+Forest_F$Loc_Cat<- "F" #adding in a new column so that when I merge all of the Fe/Fo dfs, I can distinguish by location category
+head(Forest_F)
 
 Forest_PL<- Forest %>% filter(Behavior == "PL")
 nrow(Forest_PL) #295 playing bouts in Forest
 
 Forest_G<- Forest %>% filter(Behavior %in% c("G+", "G-", "Gr+", "Gr-"))
 nrow(Forest_G) #156 
+```
+
+# Pulling out Feeding/foraging behaviors from the In/Out enclosure categories
+```{r}
+OE_F<- Out_enclosures %>% filter(Behavior %in% c("Fe", "Fo"))
+OE_F$Loc_Cat<- "OE" #adding in a new column so that when I merge all of the Fe/Fo dfs, I can distinguish by location category
+head(OE_F)
+
+IE_F<- In_enclosures %>% filter(Behavior %in% c("Fe", "Fo"))
+IE_F$Loc_Cat<- "IE"
+head(IE_F)
+```
+
+# Combinging all of my foraging/feeding dfs from each location category togeher so that I can make a bar chart and group by location (or sex, etc.)
+```{r}
+Fe_ALL<- rbind(HH_F, Forest_F, OE_F, IE_F)
+unique(Fe_ALL$Loc_Cat)
+```
+
+# Creating a plot for feeding/foraging behaviors
+```{r}
+ggplot(vervets_full) +
+  aes(x = Age, fill = factor(Behavior)) +
+  geom_bar(position = "fill")
+
+myplot <- ggplot(Fe_ALL, aes(Loc_Cat, group = Age)) + 
+          geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") + 
+          scale_y_continuous(labels=scales::percent) +
+          ylab("relative frequencies") +
+          facet_grid(~Age)
+myplot
 ```
 
