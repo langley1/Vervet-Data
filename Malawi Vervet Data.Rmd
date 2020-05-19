@@ -3,18 +3,19 @@ title: "Malawi Vervet Data"
 output: html_document
 ---
 
-```{r}
 install.packages("curl")
-library(curl)
 install.packages("dplyr")
-library(dplyr)
 install.packages("tidyverse")
-library(tidyverse)
 install.packages("gplots")
-library(gplots)
 install.packages("corrplot")
-library(corrplot)
 install.packages("ggplot2")
+
+```{r}
+library(curl)
+library(dplyr)
+library(tidyverse)
+library(gplots)
+library(corrplot)
 library(ggplot2)
 ```
 
@@ -29,7 +30,7 @@ summary(vervets_original)
 names(vervets_original)
 unique(vervets_original$Location)
 unique(vervets_original$Age)
-sort(table(original$Behavior), decreasing = TRUE)
+sort(table(vervets_original$Behavior), decreasing = TRUE)
 ```
 
 # Importing Updated DataSet 
@@ -64,7 +65,7 @@ str(human_habitation)
 human_habitation$Behavior
 HH_behav<- human_habitation$Behavior
 str(HH_behav)
-boxplot(HH_behav, data= human_habitation) ##Non Numeric Error
+#boxplot(HH_behav, data= human_habitation) ##Non Numeric Error
 str(human_habitation)
 ```
 
@@ -79,7 +80,7 @@ AF_HH #767
 *Feeding/foraging*
 ```{r}
 AF_Fe_HH<- human_habitation %>% filter(Age == "A", Sex == "F", Behavior %in% c("Fe", "Fo"))
-AF_Fo_HH #443 rows
+AF_Fe_HH #443 rows
 
 prop_AF_Fe_HH<- (nrow(AF_Fe_HH)/nrow(AF_HH))*100
 prop_AF_Fe_HH #57.76
@@ -117,8 +118,8 @@ unique(Forest$Scan.time) #142
 with(Forest, interaction(Day, Month, Scan.time, AM.PM, drop=TRUE))   # gives labels
 
 table<- aggregate(numeric(nrow(Forest)), Forest[c("Day", "Month", "Scan.time", "AM.PM")], length) 
+table
 ```
-
 
 # Finding the proportion of Adult Female behavior occurences in **Forest** category
 
@@ -133,7 +134,7 @@ AF_F #631
 AF_Fe_F<- Forest %>% filter(Age == "A", Sex == "F", Behavior %in% c("Fe", "Fo"))
 AF_Fe_F #97
 
-prop_AF_Fe_F<- (nrow(AF_Fo_F)/nrow(AF_F))*100
+prop_AF_Fe_F<- (nrow(AF_Fe_F)/nrow(AF_F))*100
 prop_AF_Fe_F #15.37
 ```
 
@@ -236,6 +237,7 @@ prop_AF_Ag_IE<- (nrow(AF_Ag_IE)/nrow(AF_IE))*100
 prop_AF_Ag_IE #3.03
 ```
 
+# Creating a matrix with the 4 location categories and AF feeding/grooming/aggression proportions
 ```{r}
 AF_behaviors_table<- matrix(c(prop_AF_Fe_F, prop_AF_Fe_HH, prop_AF_Fe_IE, prop_AF_Fe_OE, prop_AF_G_F, prop_AF_G_HH, prop_AF_G_IE, prop_AF_G_OE, prop_AF_Ag_F, prop_AF_Ag_HH, prop_AF_Ag_IE, prop_AF_Ag_OE), ncol= 4, byrow = TRUE)
 colnames(AF_behaviors_table)<- c("Forest", "HH", "In Encl", "Out Encl")
@@ -246,6 +248,7 @@ AF_behaviors_table
 balloonplot(t(AF_behaviors_table), main ="Adult Female Behaviors", xlab ="", ylab="",
             label = FALSE, show.margins = FALSE)
 ```
+
 # Running a chi-square test
 ```{r}
 AF_chisq <- chisq.test(AF_behaviors_table)
@@ -264,13 +267,11 @@ corrplot(contrib, is.cor = FALSE) #Visualizing the contribution %s
 ```
 
 
-
 # Creating dataset for the remaining locations 
 ```{r}
 Outside<- vervets_full %>% filter(Location %in% c("CG", "PW", "Ln", "RO"))
 nrow(Out_enclosures)
 ```
-
 
 # Looking at some of the individual behaviors and counting their occurences in human habituation subset
 ```{r}
@@ -343,4 +344,349 @@ myplot <- ggplot(Fe_ALL, aes(Loc_Cat, group = Age)) +
           facet_grid(~Age)
 myplot
 ```
+
+```{r}
+unique(vervets_full$Descriptor)
+unique(human_habitation$Descriptor)
+human_habitation
+```
+
+```{r}
+head(starwars)
+starwars.g<- group_by(starwars,species)
+starwars.g
+summarize(starwars.g, avg= mean(height,na.rm = TRUE))
+```
+
+# Breaking up the food into different categories and creating dfs for each
+```{r}
+food_HF<- vervets_full %>% filter(Descriptor %in% c("HF", "HFn", "HFg", "HFc", "Cr"))
+food_SE<- vervets_full %>% filter(Descriptor %in% c("Sep", "Sed"))
+food_Nat<- vervets_full %>% filter(Descriptor %in% c("N", "RV", "R"))
+food_Water<- vervets_full %>% filter(Descriptor %in% c("ST", "H", "WT"))
+
+#Creating a new column called Descriptor Cateogory for the food groupings
+food_HF$Descriptor.Cat<- "HF"
+food_SE$Descriptor.Cat<- "SE"
+food_Nat$Descriptor.Cat<- "NRV"
+food_Water$Descriptor.Cat<- "W"
+
+#Combing all of my dfs into one so that I can plot it by the Descript.Cat. Column
+food_desc_ALL<- rbind(food_HF, food_SE, food_Nat, food_Water)
+unique(food_desc_ALL$Descriptor.Cat)
+```
+
+# Plotting the food groupings by Age
+```{r}
+myplot2 <- ggplot(food_desc_ALL, aes(Descriptor.Cat, group = Age)) + 
+          geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") + 
+          scale_y_continuous(labels=scales::percent) +
+          ylab("relative frequencies") +
+          facet_grid(~Age)
+myplot2
+```
+
+# Plotting the food groupings by Sex
+```{r}
+myplot3 <- ggplot(food_desc_ALL, aes(Descriptor.Cat, group = Sex)) + 
+          geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") + 
+          scale_y_continuous(labels=scales::percent) +
+          ylab("relative frequencies") +
+          facet_grid(~Sex)
+myplot3
+```
+
+# Breaking up the locations into High/Medium/Low Human Interactions and adding a new column
+```{r}
+high_human<- vervets_full %>% filter(Location %in% c("HO", "PG", "RO", "RS"))
+med_human<- vervets_full %>% filter(Location %in% c("CG", "CP", "GP", "Ln", "PW", "WG"))
+low_human<- vervets_full %>% filter(Location %in% c("F", "RF", "RB", "RV", "Oeb", "Oed", "Oep", "Ied"))
+
+high_human$HumanLevel<- "H"
+med_human$HumanLevel<- "M"
+low_human$HumanLevel<- "L"
+
+nrow(high_human) #1816 - 1818
+nrow(med_human) #5199 - 5199
+nrow(low_human) #3484 - 3499
+```
+
+# Counting up the number of different behaviors in each group (high/med/low) in descending order
+```{r}
+high_human_behaviorcount<- high_human %>% 
+  group_by(Behavior) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+nrow(high_human_behaviorcount) #13 behaviors (should Ag+/-, Th+/-, G+/-, etc. be counted as two different behaviors or just one?)
+
+med_human_behaviorcount<- med_human %>% 
+  group_by(Behavior) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+nrow(med_human_behaviorcount) #14 behaviors
+
+low_human_behaviorcount<- low_human %>% 
+  group_by(Behavior) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+nrow(low_human_behaviorcount) #13 behaviors
+```
+
+# Finding the proportion of Adult Female behavior occurences in **high human** category
+
+*Total*
+```{r}
+AF_high_human<- high_human %>% filter(Age == "A", Sex == "F")
+AF_high_human #408
+```
+
+*Feeding/foraging*
+```{r}
+AF_Fe_high_human<- high_human %>% filter(Age == "A", Sex == "F", Behavior %in% c("Fe", "Fo"))
+AF_Fe_high_human #179
+
+prop_AF_Fe_high_human<- (nrow(AF_Fe_high_human)/nrow(AF_high_human))*100
+prop_AF_Fe_high_human #43.87
+```
+
+*Grooming*
+```{r}
+AF_G_high_human<- high_human %>% filter(Age == "A", Sex == "F", Behavior %in% c("G+", "G-"))
+AF_G_high_human #14
+
+prop_AF_G_high_human<- (nrow(AF_G_high_human)/nrow(AF_high_human))*100
+prop_AF_G_high_human #8.82
+```
+
+*Agression*
+```{r}
+AF_Ag_high_human<- high_human %>% filter(Age == "A", Sex == "F", Behavior %in% c("Ag+", "Ag-"))
+AF_Ag_high_human #3
+
+prop_AF_Ag_high_human<- (nrow(AF_Ag_high_human)/nrow(AF_high_human))*100
+prop_AF_Ag_high_human #0.735
+```
+
+*Predator Avoidance*
+```{r}
+AF_PA_high_human<- high_human %>% filter(Age == "A", Sex == "F", Behavior %in% c("PA"))
+AF_PA_high_human
+
+prop_AF_PA_high_human<- (nrow(AF_PA_high_human)/nrow(AF_high_human))*100
+prop_AF_PA_high_human #0.490
+```
+
+*Self Groom*
+```{r}
+AF_SG_high_human<- high_human %>% filter(Age == "A", Sex == "F", Behavior %in% c("SG"))
+AF_SG_high_human
+
+prop_AF_SG_high_human<- (nrow(AF_SG_high_human)/nrow(AF_high_human))*100
+prop_AF_SG_high_human #0
+```
+
+*Threatening*
+```{r}
+AF_Th_high_human<- high_human %>% filter(Age == "A", Sex == "F", Behavior %in% c("Th+", "Th-"))
+AF_Th_high_human
+
+prop_AF_Th_high_human<- (nrow(AF_Th_high_human)/nrow(AF_high_human))*100
+prop_AF_Th_high_human #0
+```
+
+# Finding the proportion of Adult Female behavior occurences in **medium human** category
+
+*Total*
+```{r}
+AF_med_human<- med_human %>% filter(Age == "A", Sex == "F")
+AF_med_human #1,073
+```
+
+*Feeding/foraging*
+```{r}
+AF_Fe_med_human<- med_human %>% filter(Age == "A", Sex == "F", Behavior %in% c("Fe", "Fo"))
+AF_Fe_med_human #467
+
+prop_AF_Fe_med_human<- (nrow(AF_Fe_med_human)/nrow(AF_med_human))*100
+prop_AF_Fe_med_human #43.52
+```
+
+*Grooming*
+```{r}
+AF_G_med_human<- med_human %>% filter(Age == "A", Sex == "F", Behavior %in% c("G+", "G-"))
+AF_G_med_human #60
+
+prop_AF_G_med_human<- (nrow(AF_G_med_human)/nrow(AF_med_human))*100
+prop_AF_G_med_human #5.59
+```
+
+*Agression*
+```{r}
+AF_Ag_med_human<- med_human %>% filter(Age == "A", Sex == "F", Behavior %in% c("Ag+", "Ag-"))
+AF_Ag_med_human #3
+
+prop_AF_Ag_med_human<- (nrow(AF_Ag_med_human)/nrow(AF_med_human))*100
+prop_AF_Ag_med_human #0.28
+```
+
+*Predator Avoidance*
+```{r}
+AF_PA_med_human<- med_human %>% filter(Age == "A", Sex == "F", Behavior %in% c("PA"))
+AF_PA_med_human
+
+prop_AF_PA_med_human<- (nrow(AF_PA_med_human)/nrow(AF_med_human))*100
+prop_AF_PA_med_human #0.0
+```
+
+*Self Groom*
+```{r}
+AF_SG_med_human<- med_human %>% filter(Age == "A", Sex == "F", Behavior %in% c("SG"))
+AF_SG_med_human
+
+prop_AF_SG_med_human<- (nrow(AF_SG_med_human)/nrow(AF_med_human))*100
+prop_AF_SG_med_human #0.0
+```
+
+*Threatening*
+```{r}
+AF_Th_med_human<- med_human %>% filter(Age == "A", Sex == "F", Behavior %in% c("Th+", "Th-"))
+AF_Th_med_human
+
+prop_AF_Th_med_human<- (nrow(AF_Th_med_human)/nrow(AF_med_human))*100
+prop_AF_Th_med_human #0.186
+```
+
+
+# Finding the proportion of Adult Female behavior occurences in **low human** category
+
+*Total*
+```{r}
+AF_low_human<- low_human %>% filter(Age == "A", Sex == "F")
+AF_low_human #786
+```
+
+*Feeding/foraging*
+```{r}
+AF_Fe_low_human<- low_human %>% filter(Age == "A", Sex == "F", Behavior %in% c("Fe", "Fo"))
+AF_Fe_low_human #150
+
+prop_AF_Fe_low_human<- (nrow(AF_Fe_low_human)/nrow(AF_low_human))*100
+prop_AF_Fe_low_human #19.08
+```
+
+*Grooming*
+```{r}
+AF_G_low_human<- low_human %>% filter(Age == "A", Sex == "F", Behavior %in% c("G+", "G-"))
+AF_G_low_human #97
+
+prop_AF_G_low_human<- (nrow(AF_G_low_human)/nrow(AF_low_human))*100
+prop_AF_G_low_human #12.34
+```
+
+*Agression*
+```{r}
+AF_Ag_low_human<- low_human %>% filter(Age == "A", Sex == "F", Behavior %in% c("Ag+", "Ag-"))
+AF_Ag_low_human #8
+
+prop_AF_Ag_low_human<- (nrow(AF_Ag_low_human)/nrow(AF_low_human))*100
+prop_AF_Ag_low_human #1.02
+```
+
+*Predator Avoidance*
+```{r}
+AF_PA_low_human<- low_human %>% filter(Age == "A", Sex == "F", Behavior %in% c("PA"))
+AF_PA_low_human
+
+prop_AF_PA_low_human<- (nrow(AF_PA_low_human)/nrow(AF_low_human))*100
+prop_AF_PA_low_human #0
+```
+
+*Self Groom*
+```{r}
+AF_SG_low_human<- low_human %>% filter(Age == "A", Sex == "F", Behavior %in% c("SG"))
+AF_SG_low_human
+
+prop_AF_SG_low_human<- (nrow(AF_SG_low_human)/nrow(AF_low_human))*100
+prop_AF_SG_low_human #0
+```
+
+*Threatening*
+```{r}
+AF_Th_low_human<- low_human %>% filter(Age == "A", Sex == "F", Behavior %in% c("Th+", "Th-"))
+AF_Th_low_human
+
+prop_AF_Th_low_human<- (nrow(AF_Th_low_human)/nrow(AF_low_human))*100
+prop_AF_Th_low_human #0.127
+```
+
+# Creating a matrix with the 4 location categories and AF feeding, grooming, aggression, predator avoidance, self-grooming, and threatening proportions
+```{r}
+AF_behaviors_table2<- matrix(c(prop_AF_Fe_high_human, prop_AF_Fe_med_human, prop_AF_Fe_low_human, prop_AF_G_high_human, prop_AF_G_med_human, prop_AF_G_low_human, prop_AF_Ag_high_human, prop_AF_Ag_med_human, prop_AF_Ag_low_human, prop_AF_PA_high_human, prop_AF_PA_med_human, prop_AF_PA_low_human, prop_AF_SG_high_human, prop_AF_SG_med_human, prop_AF_SG_low_human, prop_AF_Th_high_human, prop_AF_Th_med_human, prop_AF_Th_low_human), ncol= 3, byrow = TRUE)
+colnames(AF_behaviors_table2)<- c("High Human", "Med Human", "Low Human")
+rownames(AF_behaviors_table2)<- c("Feeding", "Grooming", "Aggression", "Predator Avoidance", "Self-Grooming", "Threatening")
+AF_behaviors_table2<- as.table(AF_behaviors_table2)
+AF_behaviors_table2
+
+balloonplot(t(AF_behaviors_table2), main ="Adult Female Behaviors", xlab ="", ylab="",
+            label = FALSE, show.margins = FALSE)
+```
+
+# Running a chi-square test for the high/med/low AF behaviors
+```{r}
+AF_chisq2 <- chisq.test(AF_behaviors_table2)
+AF_chisq2
+
+AF_chisq2$observed
+round(AF_chisq2$expected,2)
+
+round(AF_chisq2$residuals, 3) #This shows us our Pearson residuals (Cells with the highest absolute standardized residuals contribute the most to the total Chi-square score)
+corrplot(AF_chisq2$residuals, is.cor = FALSE) #Allows us to visualize the residuals, blue is positive correlationa and red is negative
+
+contrib2 <- 100*AF_chisq2$residuals^2/AF_chisq2$statistic #The contribution (in %) of a given cell to the total Chi-square score
+round(contrib2, 3)
+
+corrplot(contrib2, is.cor = FALSE) #Visualizing the contribution %s
+```
+
+#Combining all of my human level dfs into one
+```{r}
+humanlevel_ALL<- rbind(high_human, med_human, low_human)
+nrow(humanlevel_ALL) #10516
+nrow(vervets_full) #10517 (header?)
+unique(humanlevel_ALL$HumanLevel)
+```
+
+```{r}
+nrow(humanlevel_ALL) #10516
+nrow(food_desc_ALL) #3298
+
+fulljoinDF<- full_join(humanlevel_ALL, food_desc_ALL, by = c("Day", "Month", "Poop.collected.y.n", "AM.PM", "Weather", "Loc.Desc", "Scan.time", "Age", "Sex", "Strata", "Behavior", "Descriptor", "Location"))
+View(fulljoinDF)
+```
+
+# Plotting the food descriptor categories across the three human levels 
+```{r}
+ggplot(data = na.omit(fulljoinDF),aes(x= HumanLevel, fill=Descriptor.Cat, na.rm = TRUE)) + 
+   geom_bar(position="fill") #There are a lot of NAs in the Descriptor Cat column so this removes them
+```
+
+# Plotting the different age groups across the three human levels, grouped by age
+```{r}
+myplot3 <- ggplot(humanlevel_ALL, aes(HumanLevel, group = Age)) + 
+          geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") + 
+          scale_y_continuous(labels=scales::percent) +
+          ylab("relative frequencies") +
+          facet_grid(~Age)
+myplot3
+```
+
+# Plotting the ages/sexs in the three human levels, filled bar format
+```{r}
+ggplot(data = fulljoinDF, aes(x= HumanLevel, fill=Age)) + 
+   geom_bar(position="fill")
+
+ggplot(data = fulljoinDF, aes(x= HumanLevel, fill=Sex)) + 
+   geom_bar(position="fill") #Lots of unknowns
+```
+
 
