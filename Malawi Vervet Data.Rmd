@@ -50,6 +50,14 @@ table_full<- aggregate(numeric(nrow(vervets_full)), vervets_full[c("Day", "Month
 nrow(table_full) #1168 total scans
 ```
 
+# Creating unique IDs for each scan sample 
+```{r}
+vervets_full<- vervets_full %>% unite("Scan.info", Day, Month, Scan.time, sep = "_", remove = FALSE)  #this unites the 3 columns, (day, month, scan time) into one column called "Scan.info" so that I can create an ID based on each unique scan 
+vervets_full<- transform(vervets_full, ScanID= as.numeric(factor(Scan.info))) #this creates a new column called "ScanID" and assigns its #s based on the Scan.info column 
+
+tail(levels(factor(vervets_full$ScanID))) #There are a total of 1168 scans
+```
+
 # Creating a subset of the data only looking at location that falls under "human habitation"
 ```{r}
 human_habitation<- vervets_full %>% filter(Location %in% c("HCS", "HS", "HO", "RS", "CP", "PG", "GP")) 
@@ -351,6 +359,7 @@ unique(human_habitation$Descriptor)
 human_habitation
 ```
 
+# An example using the starwars data
 ```{r}
 head(starwars)
 starwars.g<- group_by(starwars,species)
@@ -360,10 +369,10 @@ summarize(starwars.g, avg= mean(height,na.rm = TRUE))
 
 # Breaking up the food into different categories and creating dfs for each
 ```{r}
-food_HF<- vervets_full %>% filter(Descriptor %in% c("HF", "HFn", "HFg", "HFc", "Cr"))
-food_SE<- vervets_full %>% filter(Descriptor %in% c("Sep", "Sed"))
-food_Nat<- vervets_full %>% filter(Descriptor %in% c("N", "RV", "R"))
-food_Water<- vervets_full %>% filter(Descriptor %in% c("ST", "H", "WT"))
+food_HF<- vervets_full %>% filter(Descriptor %in% c("HF", "HFn", "HFg", "HFc", "Cr")) #human food and crops
+food_SE<- vervets_full %>% filter(Descriptor %in% c("Sep", "Sed")) #Spilled enclosure food
+food_Nat<- vervets_full %>% filter(Descriptor %in% c("N", "RV", "R")) #Natural and river
+food_Water<- vervets_full %>% filter(Descriptor %in% c("ST", "H", "WT")) #sewage, hose, water
 
 #Creating a new column called Descriptor Cateogory for the food groupings
 food_HF$Descriptor.Cat<- "HF"
@@ -376,7 +385,9 @@ food_desc_ALL<- rbind(food_HF, food_SE, food_Nat, food_Water)
 unique(food_desc_ALL$Descriptor.Cat)
 ```
 
-# Plotting the food groupings by Age
+# Plotting the food groupings 
+
+*by Age*
 ```{r}
 myplot2 <- ggplot(food_desc_ALL, aes(Descriptor.Cat, group = Age)) + 
           geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") + 
@@ -386,7 +397,7 @@ myplot2 <- ggplot(food_desc_ALL, aes(Descriptor.Cat, group = Age)) +
 myplot2
 ```
 
-# Plotting the food groupings by Sex
+*by Sex*
 ```{r}
 myplot3 <- ggplot(food_desc_ALL, aes(Descriptor.Cat, group = Sex)) + 
           geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") + 
@@ -406,9 +417,9 @@ high_human$HumanLevel<- "H"
 med_human$HumanLevel<- "M"
 low_human$HumanLevel<- "L"
 
-nrow(high_human) #1816 - 1818
-nrow(med_human) #5199 - 5199
-nrow(low_human) #3484 - 3499
+nrow(high_human) #1818
+nrow(med_human) #5199
+nrow(low_human) #3499
 ```
 
 # Counting up the number of different behaviors in each group (high/med/low) in descending order
@@ -418,6 +429,11 @@ high_human_behaviorcount<- high_human %>%
   summarize(count=n()) %>% 
   arrange(desc(count))
 nrow(high_human_behaviorcount) #13 behaviors (should Ag+/-, Th+/-, G+/-, etc. be counted as two different behaviors or just one?)
+
+high_human_behaviorcount<- high_human %>%
+  group_by(Behavior, ScanID) %>%
+  summarize(count=n()) %>% 
+  arrange(desc(count))
 
 med_human_behaviorcount<- med_human %>% 
   group_by(Behavior) %>% 
@@ -432,7 +448,7 @@ low_human_behaviorcount<- low_human %>%
 nrow(low_human_behaviorcount) #13 behaviors
 ```
 
-# Finding the proportion of Adult Female behavior occurences in **high human** category
+## Finding the proportion of Adult Female behavior occurences in **high human** category
 
 *Total*
 ```{r}
@@ -619,7 +635,7 @@ prop_AF_Th_low_human<- (nrow(AF_Th_low_human)/nrow(AF_low_human))*100
 prop_AF_Th_low_human #0.127
 ```
 
-# Creating a matrix with the 4 location categories and AF feeding, grooming, aggression, predator avoidance, self-grooming, and threatening proportions
+# Creating a matrix with the 3 location categories and AF feeding, grooming, aggression, predator avoidance, self-grooming, and threatening proportions
 ```{r}
 AF_behaviors_table2<- matrix(c(prop_AF_Fe_high_human, prop_AF_Fe_med_human, prop_AF_Fe_low_human, prop_AF_G_high_human, prop_AF_G_med_human, prop_AF_G_low_human, prop_AF_Ag_high_human, prop_AF_Ag_med_human, prop_AF_Ag_low_human, prop_AF_PA_high_human, prop_AF_PA_med_human, prop_AF_PA_low_human, prop_AF_SG_high_human, prop_AF_SG_med_human, prop_AF_SG_low_human, prop_AF_Th_high_human, prop_AF_Th_med_human, prop_AF_Th_low_human), ncol= 3, byrow = TRUE)
 colnames(AF_behaviors_table2)<- c("High Human", "Med Human", "Low Human")
@@ -656,28 +672,57 @@ nrow(vervets_full) #10517 (header?)
 unique(humanlevel_ALL$HumanLevel)
 ```
 
+# Using full_join to combine my human level categories with the food descriptor categories I made... then I make another dataset which removes the NAs from the Food Descriptor column
 ```{r}
 nrow(humanlevel_ALL) #10516
 nrow(food_desc_ALL) #3298
 
 fulljoinDF<- full_join(humanlevel_ALL, food_desc_ALL, by = c("Day", "Month", "Poop.collected.y.n", "AM.PM", "Weather", "Loc.Desc", "Scan.time", "Age", "Sex", "Strata", "Behavior", "Descriptor", "Location"))
 View(fulljoinDF)
+
+fulljoinDF_noNA<- drop_na(fulljoinDF)
 ```
 
 # Plotting the food descriptor categories across the three human levels 
 ```{r}
 ggplot(data = na.omit(fulljoinDF),aes(x= HumanLevel, fill=Descriptor.Cat, na.rm = TRUE)) + 
    geom_bar(position="fill") #There are a lot of NAs in the Descriptor Cat column so this removes them
+
+#This plot shows that there are the most "Human Foods" in the high and medium human level locations and spilled enclosure food only in the low level group
 ```
+
+# Just another way to visualize the plot above: the food description categories across the 3 Human Level groups (NAs not removed here)
+```{r}
+plot_foodvshumanlevel <- ggplot(fulljoinDF, aes(Descriptor.Cat, group = HumanLevel)) + 
+          geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") + 
+          scale_y_continuous(labels=scales::percent) +
+          ylab("relative frequencies") +
+          facet_grid(~HumanLevel)
+plot_foodvshumanlevel
+```
+
+## Finding the proportion of the food desc categories in **high human** category
+
+*Total*
+```{r}
+nrow(fulljoinDF_noNA) #With the NAs removed from the food descriptor column, there are a total of 8252 
+
+allfoods_high_human<- fulljoinDF_noNA %>% filter(HumanLevel == "H")
+
+```
+
+
+
+
 
 # Plotting the different age groups across the three human levels, grouped by age
 ```{r}
-myplot3 <- ggplot(humanlevel_ALL, aes(HumanLevel, group = Age)) + 
+myplot4 <- ggplot(humanlevel_ALL, aes(HumanLevel, group = Age)) + 
           geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") + 
           scale_y_continuous(labels=scales::percent) +
           ylab("relative frequencies") +
           facet_grid(~Age)
-myplot3
+myplot4
 ```
 
 # Plotting the ages/sexs in the three human levels, filled bar format
@@ -689,4 +734,10 @@ ggplot(data = fulljoinDF, aes(x= HumanLevel, fill=Sex)) +
    geom_bar(position="fill") #Lots of unknowns
 ```
 
+# Creating unique IDs for each scan sample 
+```{r}
+vervets_full<- vervets_full %>% unite("Scan.info", Day, Month, Scan.time, sep = "_", remove = FALSE)  #this unites the 3 columns, (day, month, scan time) into one column called "Scan.info" so that I can create an ID based on each unique scan 
+vervets_full<- transform(vervets_full, ScanID= as.numeric(factor(Scan.info))) #this creates a new column called "ScanID" and assigns its #s based on the Scan.info column 
 
+tail(levels(factor(vervets_full$ScanID))) #There are a total of 1168 scans
+```
