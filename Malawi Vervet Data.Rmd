@@ -33,7 +33,7 @@ unique(vervets_original$Age)
 sort(table(vervets_original$Behavior), decreasing = TRUE)
 ```
 
-# Importing Updated DataSet 
+# Importing Updated DataSet with edits given by Olivia
 ```{r}
 vervets_full<- curl("https://raw.githubusercontent.com/langley1/Vervet-Data/master/LWT%20Vervet%20Dataset_Updated.csv")
 vervets_full<- read.csv(vervets_full, header = TRUE)
@@ -389,22 +389,22 @@ unique(food_desc_ALL$Descriptor.Cat)
 
 *by Age*
 ```{r}
-myplot2 <- ggplot(food_desc_ALL, aes(Descriptor.Cat, group = Age)) + 
+food_age_plot <- ggplot(food_desc_ALL, aes(Descriptor.Cat, group = Age)) + 
           geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") + 
           scale_y_continuous(labels=scales::percent) +
           ylab("relative frequencies") +
           facet_grid(~Age)
-myplot2
+food_age_plot
 ```
 
 *by Sex*
 ```{r}
-myplot3 <- ggplot(food_desc_ALL, aes(Descriptor.Cat, group = Sex)) + 
+food_sex_plot <- ggplot(food_desc_ALL, aes(Descriptor.Cat, group = Sex)) + 
           geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") + 
           scale_y_continuous(labels=scales::percent) +
           ylab("relative frequencies") +
           facet_grid(~Sex)
-myplot3
+food_sex_plot
 ```
 
 # Breaking up the locations into High/Medium/Low Human Interactions and adding a new column
@@ -474,7 +474,7 @@ prop_AF_G_high_human<- (nrow(AF_G_high_human)/nrow(AF_high_human))*100
 prop_AF_G_high_human #8.82
 ```
 
-*Agression*
+*Aggression*
 ```{r}
 AF_Ag_high_human<- high_human %>% filter(Age == "A", Sex == "F", Behavior %in% c("Ag+", "Ag-"))
 AF_Ag_high_human #3
@@ -637,9 +637,11 @@ prop_AF_Th_low_human #0.127
 
 # Creating a matrix with the 3 location categories and AF feeding, grooming, aggression, predator avoidance, self-grooming, and threatening proportions
 ```{r}
-AF_behaviors_table2<- matrix(c(prop_AF_Fe_high_human, prop_AF_Fe_med_human, prop_AF_Fe_low_human, prop_AF_G_high_human, prop_AF_G_med_human, prop_AF_G_low_human, prop_AF_Ag_high_human, prop_AF_Ag_med_human, prop_AF_Ag_low_human, prop_AF_PA_high_human, prop_AF_PA_med_human, prop_AF_PA_low_human, prop_AF_SG_high_human, prop_AF_SG_med_human, prop_AF_SG_low_human, prop_AF_Th_high_human, prop_AF_Th_med_human, prop_AF_Th_low_human), ncol= 3, byrow = TRUE)
+#Note: I removed the self-groom behavior from this matrix because the value was 0 for high, med and low category, no self-grooming occurred with adult females
+
+AF_behaviors_table2<- matrix(c(prop_AF_Fe_high_human, prop_AF_Fe_med_human, prop_AF_Fe_low_human, prop_AF_G_high_human, prop_AF_G_med_human, prop_AF_G_low_human, prop_AF_Ag_high_human, prop_AF_Ag_med_human, prop_AF_Ag_low_human, prop_AF_PA_high_human, prop_AF_PA_med_human, prop_AF_PA_low_human, prop_AF_Th_high_human, prop_AF_Th_med_human, prop_AF_Th_low_human), ncol= 3, byrow = TRUE)
 colnames(AF_behaviors_table2)<- c("High Human", "Med Human", "Low Human")
-rownames(AF_behaviors_table2)<- c("Feeding", "Grooming", "Aggression", "Predator Avoidance", "Self-Grooming", "Threatening")
+rownames(AF_behaviors_table2)<- c("Feeding", "Grooming", "Aggression", "Predator Avoidance", "Threatening")
 AF_behaviors_table2<- as.table(AF_behaviors_table2)
 AF_behaviors_table2
 
@@ -656,7 +658,7 @@ AF_chisq2$observed
 round(AF_chisq2$expected,2)
 
 round(AF_chisq2$residuals, 3) #This shows us our Pearson residuals (Cells with the highest absolute standardized residuals contribute the most to the total Chi-square score)
-corrplot(AF_chisq2$residuals, is.cor = FALSE) #Allows us to visualize the residuals, blue is positive correlationa and red is negative
+corrplot(AF_chisq2$residuals, is.cor = FALSE) #Allows us to visualize the residuals, blue is positive correlation and red is negative
 
 contrib2 <- 100*AF_chisq2$residuals^2/AF_chisq2$statistic #The contribution (in %) of a given cell to the total Chi-square score
 round(contrib2, 3)
@@ -681,6 +683,7 @@ fulljoinDF<- full_join(humanlevel_ALL, food_desc_ALL, by = c("Day", "Month", "Po
 View(fulljoinDF)
 
 fulljoinDF_noNA<- drop_na(fulljoinDF)
+nrow(fulljoinDF_noNA)
 ```
 
 # Plotting the food descriptor categories across the three human levels 
@@ -688,7 +691,7 @@ fulljoinDF_noNA<- drop_na(fulljoinDF)
 ggplot(data = na.omit(fulljoinDF),aes(x= HumanLevel, fill=Descriptor.Cat, na.rm = TRUE)) + 
    geom_bar(position="fill") #There are a lot of NAs in the Descriptor Cat column so this removes them
 
-#This plot shows that there are the most "Human Foods" in the high and medium human level locations and spilled enclosure food only in the low level group
+#This plot shows that there are the most HF, "Human Foods" in the high and medium human level locations and spilled enclosure food only in the low level group
 ```
 
 # Just another way to visualize the plot above: the food description categories across the 3 Human Level groups (NAs not removed here)
@@ -712,26 +715,26 @@ allfoods_high_human<- fulljoinDF_noNA %>% filter(HumanLevel == "H")
 ```
 
 
-
-
-
 # Plotting the different age groups across the three human levels, grouped by age
 ```{r}
-myplot4 <- ggplot(humanlevel_ALL, aes(HumanLevel, group = Age)) + 
+HumanLevel_Age_plot <- ggplot(humanlevel_ALL, aes(HumanLevel, group = Age)) + 
           geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") + 
           scale_y_continuous(labels=scales::percent) +
           ylab("relative frequencies") +
           facet_grid(~Age)
-myplot4
+HumanLevel_Age_plot
+
+# This plot shows that the percentage of adult, juvenile, and infant monkeys across the 3 human levels is pretty consistent. Overall, there are the most individuals in the medium human level group and the least in the high human level group. 
 ```
 
 # Plotting the ages/sexs in the three human levels, filled bar format
 ```{r}
-ggplot(data = fulljoinDF, aes(x= HumanLevel, fill=Age)) + 
+ggplot(data = humanlevel_ALL, aes(x= HumanLevel, fill=Age)) + 
    geom_bar(position="fill")
 
-ggplot(data = fulljoinDF, aes(x= HumanLevel, fill=Sex)) + 
+ggplot(data = humanlevel_ALL, aes(x= HumanLevel, fill=Sex)) + 
    geom_bar(position="fill") #Lots of unknowns
+
 ```
 
 # Creating unique IDs for each scan sample 
@@ -741,3 +744,16 @@ vervets_full<- transform(vervets_full, ScanID= as.numeric(factor(Scan.info))) #t
 
 tail(levels(factor(vervets_full$ScanID))) #There are a total of 1168 scans
 ```
+
+# Looking at ONLY feeding and foraging behaviors in the High Human category across different scan time chunks (i.e. 6-10am; 9-12pm; 12-15pm; 15-18pm)
+```{r}
+library(lubridate)
+HighHum_Fe_DF<- humanlevel_ALL %>% filter(HumanLevel == "H", Behavior %in% c("Fe", "Fo")) #Filtering out only the Fe/Fo behaviors in the High Human location category 
+
+HighHum_Fe_DF$Scan.time <- strptime(HighHum_Fe_DF$Scan.time, "%H:%M") #Must use strptime() first b/c this tells the 'strptime' function what format is currently in use, and exports a POSIX-compatible datetime.
+HighHum_Fe_DF$Scan.time <- as.POSIXct(HighHum_Fe_DF$Scan.time) #Now you can use the as.POSIXct format; NOTE: this puts in today's current Year-Month-Day into the Scan.time column, I'm not sure how to remove this yet so I'm just going to keep it in for now
+
+HighHum_Fe_6though10<- with(HighHum_Fe_DF, HighHum_Fe_DF[hour(Scan.time) >= 6 & hour(Scan.time) < 10,]) #Now specifying which time chunk I'd like to look at
+HighHum_Fe_6though10
+```
+
