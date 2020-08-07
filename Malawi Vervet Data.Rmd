@@ -50,7 +50,7 @@ table_full<- aggregate(numeric(nrow(vervets_full)), vervets_full[c("Day", "Month
 nrow(table_full) #1168 total scans
 ```
 
-# Creating unique IDs for each scan sample 
+## Creating unique IDs for each scan sample 
 ```{r}
 vervets_full<- vervets_full %>% unite("Scan.info", Day, Month, Scan.time, sep = "_", remove = FALSE)  #this unites the 3 columns, (day, month, scan time) into one column called "Scan.info" so that I can create an ID based on each unique scan 
 vervets_full<- transform(vervets_full, ScanID= as.numeric(factor(Scan.info))) #this creates a new column called "ScanID" and assigns its #s based on the Scan.info column 
@@ -446,6 +446,8 @@ low_human_behaviorcount<- low_human %>%
   summarize(count=n()) %>% 
   arrange(desc(count))
 nrow(low_human_behaviorcount) #13 behaviors
+
+#Overall, there are roughly the same total number of unique behaviors seen across the three location categories- human level doesn't seem to affect behavioral diversity
 ```
 
 ## Finding the proportion of Adult Female behavior occurences in **high human** category
@@ -704,17 +706,6 @@ plot_foodvshumanlevel <- ggplot(fulljoinDF, aes(Descriptor.Cat, group = HumanLev
 plot_foodvshumanlevel
 ```
 
-## Finding the proportion of the food desc categories in **high human** category
-
-*Total*
-```{r}
-nrow(fulljoinDF_noNA) #With the NAs removed from the food descriptor column, there are a total of 8252 
-
-allfoods_high_human<- fulljoinDF_noNA %>% filter(HumanLevel == "H")
-
-```
-
-
 # Plotting the different age groups across the three human levels, grouped by age
 ```{r}
 HumanLevel_Age_plot <- ggplot(humanlevel_ALL, aes(HumanLevel, group = Age)) + 
@@ -753,7 +744,37 @@ HighHum_Fe_DF<- humanlevel_ALL %>% filter(HumanLevel == "H", Behavior %in% c("Fe
 HighHum_Fe_DF$Scan.time <- strptime(HighHum_Fe_DF$Scan.time, "%H:%M") #Must use strptime() first b/c this tells the 'strptime' function what format is currently in use, and exports a POSIX-compatible datetime.
 HighHum_Fe_DF$Scan.time <- as.POSIXct(HighHum_Fe_DF$Scan.time) #Now you can use the as.POSIXct format; NOTE: this puts in today's current Year-Month-Day into the Scan.time column, I'm not sure how to remove this yet so I'm just going to keep it in for now
 
-HighHum_Fe_6though10<- with(HighHum_Fe_DF, HighHum_Fe_DF[hour(Scan.time) >= 6 & hour(Scan.time) < 10,]) #Now specifying which time chunk I'd like to look at
-HighHum_Fe_6though10
+HighHum_Fe_6thr9<- with(HighHum_Fe_DF, HighHum_Fe_DF[hour(Scan.time) >= 6 & hour(Scan.time) < 9,]) #Now specifying which time chunk I'd like to look at; 6 through 10
+head(HighHum_Fe_6thr9)
+
+HighHum_Fe_9thr12<- with(HighHum_Fe_DF, HighHum_Fe_DF[hour(Scan.time) >= 9 & hour(Scan.time) < 12,]) 
+head(HighHum_Fe_9thr12) #9 through 12
+
+HighHum_Fe_12thr15<- with(HighHum_Fe_DF, HighHum_Fe_DF[hour(Scan.time) >= 12 & hour(Scan.time) < 15,]) 
+head(HighHum_Fe_12thr15) #12 through 15
+
+HighHum_Fe_15thr18<- with(HighHum_Fe_DF, HighHum_Fe_DF[hour(Scan.time) >= 15 & hour(Scan.time) < 18,]) 
+head(HighHum_Fe_15thr18) #15 through 18
 ```
 
+## Creating a new column in HighHum_Fe_DF called "Time Block"
+```{r}
+#First I have to create a new column called "time.block" in each of my dfs and specify what I want in that column
+HighHum_Fe_6thr9$Time.Block<- "6-9"
+HighHum_Fe_9thr12$Time.Block<- "9-12"
+HighHum_Fe_12thr15$Time.Block<- "12-15"
+HighHum_Fe_15thr18$Time.Block<- "15-18"
+
+#Now I combine all of my dfs into one so that I can plot it by the Time.Block Column
+HighHum_Fe_ALL<- rbind(HighHum_Fe_6thr9, HighHum_Fe_9thr12, HighHum_Fe_12thr15, HighHum_Fe_15thr18)
+unique(HighHum_Fe_ALL$Time.Block)
+```
+
+## Plotting the number of feeding/foraging behaviors across the 4 time blocks
+```{r}
+TimeBlock_Fe_plot<- ggplot(data = HighHum_Fe_ALL, aes(x= Time.Block, fill=Behavior)) + 
+   geom_bar((aes(fill = Behavior)))
+TimeBlock_Fe_plot
+
+#From this plot, we can see that there are the highest number of feeding and foraging behaviors during the 6-9am time block and the second highest during 12-15. Feeding and foraging occured the least during the 15-18 time block.
+```
